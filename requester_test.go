@@ -23,15 +23,15 @@ func TestDecodeInstruction(t *testing.T) {
 }
 
 func TestGetURL(t *testing.T) {
-	want := "Hello, world!"
+	want := []byte("Hello, world!")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, want)
+		fmt.Fprintf(w, "%s", want)
 	}))
 	in := instruction{URL: ts.URL}
 	defer ts.Close()
 
 	got := getURL(&in.URL)
-	if want != got {
+	if !reflect.DeepEqual(want, got) {
 		t.Errorf("executeInstuction(%+v) = %s, want %s", in, got, want)
 	}
 }

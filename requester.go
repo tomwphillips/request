@@ -43,7 +43,7 @@ func decodeInstruction(m []byte) instruction {
 	return i
 }
 
-func getURL(url *string) string {
+func getURL(url *string) []byte {
 	resp, err := http.Get(*url)
 	if err != nil {
 		log.Fatalf("Get request failed: %v", err)
@@ -53,7 +53,8 @@ func getURL(url *string) string {
 	if err != nil {
 		log.Fatalf("Read response body failed: %v", err)
 	}
-	return string(body)
+	return body
+}
 }
 
 func executeInstruction(i instruction) string {
