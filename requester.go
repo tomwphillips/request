@@ -2,7 +2,9 @@ package requester
 
 import (
 	"context"
+	"crypto/sha1"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -55,6 +57,11 @@ func getURL(url *string) []byte {
 	}
 	return body
 }
+
+func getHash(b *[]byte) []byte {
+	h := sha1.New()
+	h.Write(*b)
+	return h.Sum(nil)
 }
 
 func executeInstruction(i instruction) string {
