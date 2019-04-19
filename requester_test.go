@@ -16,7 +16,7 @@ func TestDecodeInstruction(t *testing.T) {
 	}
 }
 
-func TestExecuteInstruction(t *testing.T) {
+func TestGetURL(t *testing.T) {
 	want := "Hello, world!"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, want)
@@ -24,7 +24,7 @@ func TestExecuteInstruction(t *testing.T) {
 	in := instruction{URL: ts.URL}
 	defer ts.Close()
 
-	got := executeInstruction(in)
+	got := getURL(&in.URL)
 	if want != got {
 		t.Errorf("executeInstuction(%+v) = %s, want %s", in, got, want)
 	}
