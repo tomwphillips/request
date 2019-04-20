@@ -13,6 +13,14 @@ import (
 	"cloud.google.com/go/storage"
 )
 
+var bucketName = os.Getenv("REQUESTER_TEST_BUCKET")
+
+func init() {
+	if bucketName == "" {
+		log.Fatalf("REQUESTER_TEST_BUCKET environment variable not set")
+	}
+}
+
 func TestDecodeInstruction(t *testing.T) {
 	in := []byte(`{"url": "http://google.com"}`)
 	want := instruction{URL: "http://google.com"}
@@ -36,6 +44,16 @@ func TestGetURL(t *testing.T) {
 	}
 }
 
+func download(ctx context.Context, client *storage.Client, object string, bucket string) ([]byte, error) {
+	// TODO: check Golang book about concatenating error values
+	r, err := client.Bucket(bucketName).Object(object).NewReader(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	return ioutil.ReadAll(r)
+}
+
 func TestUpload(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping upload test in short mode")
@@ -47,11 +65,6 @@ func TestUpload(t *testing.T) {
 		t.Fatalf("Creating client: %v", err)
 	}
 
-	bucketName := os.Getenv("REQUESTER_TEST_BUCKET")
-	if bucketName == "" {
-		t.Fatalf("REQUESTER_TEST_BUCKET environment variable not set")
-	}
-
 	objName := "test-object.txt"
 	want := []byte("test bytes")
 	err = upload(ctx, client, &want, objName, bucketName)
@@ -59,9 +72,13 @@ func TestUpload(t *testing.T) {
 		t.Fatalf("Upload failed: %v", err)
 	}
 
-	r, err := client.Bucket(bucketName).Object(objName).NewReader(ctx)
+	got, err := download(ctx, client, objName, bucketName)
 	if err != nil {
-		t.Fatalf("Failed reading object: %v", err)
+		t.Fatalf("Download error: %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Got %s, want %s", got, want)
+	}
 	}
 	defer r.Close()
 	got, err := ioutil.ReadAll(r)
