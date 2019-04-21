@@ -70,9 +70,7 @@ func upload(ctx context.Context, client *storage.Client, b *[]byte, object strin
 	return obj, nil
 }
 
-// ConsumePubSub decodes and execute instructions
-func ConsumePubSub(ctx context.Context, m PubSubMessage) (*storage.ObjectHandle, error) {
-	i := decodeInstruction(m.Data)
+func execute(ctx context.Context, i instruction) (*storage.ObjectHandle, error) {
 	body := getURL(&i.URL)
 	client, err := storage.NewClient(ctx)
 	if err != nil {
@@ -80,4 +78,11 @@ func ConsumePubSub(ctx context.Context, m PubSubMessage) (*storage.ObjectHandle,
 	}
 	object := fmt.Sprintf("%x", getHash(&body))
 	return upload(ctx, client, &body, object, i.Bucket)
+}
+
+// ConsumePubSub decodes and execute instructions
+func ConsumePubSub(ctx context.Context, m PubSubMessage) error {
+	i := decodeInstruction(m.Data)
+	_, err := execute(ctx, i)
+	return err
 }

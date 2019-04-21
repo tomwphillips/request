@@ -77,25 +77,25 @@ func TestUpload(t *testing.T) {
 	}
 }
 
-func TestConsumePubSub(t *testing.T) {
+func TestExecute(t *testing.T) {
 	want := []byte("Hello, world!")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s", want)
 	}))
 	defer ts.Close()
 
-	in := fmt.Sprintf(`{"url": "%s", "bucket": "%s"}`, ts.URL, bucketName)
-	m := PubSubMessage{
-		Data: []byte(in),
-	}
 	ctx := context.Background()
-	obj, err := ConsumePubSub(ctx, m)
+	in := instruction{URL: ts.URL, Bucket: bucketName}
+	obj, err := execute(ctx, in)
+	if err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
 
 	r, err := obj.NewReader(ctx)
-	if err != nil {
-		t.Fatalf("Reader failed: %v", err)
-	}
 	defer r.Close()
+	if err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
 	got, err := ioutil.ReadAll(r)
 	if err != nil {
 		t.Fatalf("ReadAll error: %v", err)
