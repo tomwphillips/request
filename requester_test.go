@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,8 +23,8 @@ func init() {
 }
 
 func TestDecodeInstruction(t *testing.T) {
-	in := []byte(`{"url": "http://google.com"}`)
-	want := instruction{URL: "http://google.com"}
+	in := []byte(`{"url": "http://google.com", "bucket": "bucket-name"}`)
+	want := instruction{URL: "http://google.com", Bucket: "bucket-name"}
 	got := decodeInstruction(in)
 	if got != want {
 		t.Errorf("decodeInstruction(%s) = %+v, want %+v", in, got, want)
@@ -44,16 +45,6 @@ func TestGetURL(t *testing.T) {
 	}
 }
 
-func download(ctx context.Context, client *storage.Client, object string, bucket string) ([]byte, error) {
-	// TODO: check Golang book about concatenating error values
-	r, err := client.Bucket(bucketName).Object(object).NewReader(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-	return ioutil.ReadAll(r)
-}
-
 func TestUpload(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping upload test in short mode")
@@ -67,25 +58,49 @@ func TestUpload(t *testing.T) {
 
 	objName := "test-object.txt"
 	want := []byte("test bytes")
-	err = upload(ctx, client, &want, objName, bucketName)
+	obj, err := upload(ctx, client, &want, objName, bucketName)
 	if err != nil {
 		t.Fatalf("Upload failed: %v", err)
 	}
 
-	got, err := download(ctx, client, objName, bucketName)
+	r, err := obj.NewReader(ctx)
 	if err != nil {
-		t.Fatalf("Download error: %v", err)
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("Got %s, want %s", got, want)
-	}
+		t.Fatalf("Reader failed: %v", err)
 	}
 	defer r.Close()
 	got, err := ioutil.ReadAll(r)
 	if err != nil {
-		t.Fatalf("Error reading from bucket: %v", err)
+		t.Fatalf("ReadAll error: %v", err)
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("Got %s, want %s", got, want)
+	}
+}
+
+func TestConsumePubSub(t *testing.T) {
+	want := []byte("Hello, world!")
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "%s", want)
+	}))
+	defer ts.Close()
+
+	in := fmt.Sprintf(`{"url": "%s", "bucket": "%s"}`, ts.URL, bucketName)
+	m := PubSubMessage{
+		Data: []byte(in),
+	}
+	ctx := context.Background()
+	obj, err := ConsumePubSub(ctx, m)
+
+	r, err := obj.NewReader(ctx)
+	if err != nil {
+		t.Fatalf("Reader failed: %v", err)
+	}
+	defer r.Close()
+	got, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll error: %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Read from object: %s, want %s", got, want)
 	}
 }

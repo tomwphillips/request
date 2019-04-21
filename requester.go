@@ -13,29 +13,34 @@ import (
 )
 
 type instruction struct {
-	URL string
+	URL    string
+	Bucket string
+}
+
+type PubSubMessage struct {
+	Data []byte `json:"data"`
 }
 
 // Upload writes bytes to an object in a Google Storage bucket
-func upload(ctx context.Context, client *storage.Client, b *[]byte, object string, bucket string) error {
+func upload(ctx context.Context, client *storage.Client, b *[]byte, object string, bucket string) (*storage.ObjectHandle, error) {
 	bh := *client.Bucket(bucket)
-
 	if _, err := bh.Attrs(ctx); err != nil {
-		return err // bucket doesn't exist
+		return nil, err // bucket doesn't exist
 	}
 
 	obj := bh.Object(object)
 	w := obj.NewWriter(ctx)
 	if _, err := w.Write(*b); err != nil {
-		return err
+		return obj, err
 	}
 	if err := w.Close(); err != nil {
-		return err
+		return obj, err
 	}
 
-	return nil
+	return obj, nil
 }
 
+// decodeInstruction from JSON-encoded byte array
 func decodeInstruction(m []byte) instruction {
 	var i instruction
 	err := json.Unmarshal(m, &i)
@@ -45,6 +50,7 @@ func decodeInstruction(m []byte) instruction {
 	return i
 }
 
+// getURL returns contents at URL
 func getURL(url *string) []byte {
 	resp, err := http.Get(*url)
 	if err != nil {
@@ -64,6 +70,14 @@ func getHash(b *[]byte) []byte {
 	return h.Sum(nil)
 }
 
-func executeInstruction(i instruction) string {
-	return getURL(&i.URL)
+// ConsumePubSub decodes and execute instructions
+func ConsumePubSub(ctx context.Context, m PubSubMessage) (*storage.ObjectHandle, error) {
+	i := decodeInstruction(m.Data)
+	body := getURL(&i.URL)
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	object := fmt.Sprintf("%x", getHash(&body))
+	return upload(ctx, client, &body, object, i.Bucket)
 }
