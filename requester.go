@@ -21,25 +21,6 @@ type PubSubMessage struct {
 	Data []byte `json:"data"`
 }
 
-// Upload writes bytes to an object in a Google Storage bucket
-func upload(ctx context.Context, client *storage.Client, b *[]byte, object string, bucket string) (*storage.ObjectHandle, error) {
-	bh := *client.Bucket(bucket)
-	if _, err := bh.Attrs(ctx); err != nil {
-		return nil, err // bucket doesn't exist
-	}
-
-	obj := bh.Object(object)
-	w := obj.NewWriter(ctx)
-	if _, err := w.Write(*b); err != nil {
-		return obj, err
-	}
-	if err := w.Close(); err != nil {
-		return obj, err
-	}
-
-	return obj, nil
-}
-
 // decodeInstruction from JSON-encoded byte array
 func decodeInstruction(m []byte) instruction {
 	var i instruction
@@ -68,6 +49,25 @@ func getHash(b *[]byte) []byte {
 	h := sha1.New()
 	h.Write(*b)
 	return h.Sum(nil)
+}
+
+// Upload writes bytes to an object in a Google Storage bucket
+func upload(ctx context.Context, client *storage.Client, b *[]byte, object string, bucket string) (*storage.ObjectHandle, error) {
+	bh := *client.Bucket(bucket)
+	if _, err := bh.Attrs(ctx); err != nil {
+		return nil, err // bucket doesn't exist
+	}
+
+	obj := bh.Object(object)
+	w := obj.NewWriter(ctx)
+	if _, err := w.Write(*b); err != nil {
+		return obj, err
+	}
+	if err := w.Close(); err != nil {
+		return obj, err
+	}
+
+	return obj, nil
 }
 
 // ConsumePubSub decodes and execute instructions
