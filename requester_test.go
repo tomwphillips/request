@@ -25,7 +25,7 @@ func init() {
 func TestDecodeInstruction(t *testing.T) {
 	in := []byte(`{"url": "http://google.com", "bucket": "bucket-name"}`)
 	want := instruction{URL: "http://google.com", Bucket: "bucket-name"}
-	got := decodeInstruction(in)
+	got, _ := decodeInstruction(in)
 	if got != want {
 		t.Errorf("decodeInstruction(%s) = %+v, want %+v", in, got, want)
 	}
@@ -39,7 +39,7 @@ func TestGetURL(t *testing.T) {
 	in := instruction{URL: ts.URL}
 	defer ts.Close()
 
-	got := getURL(&in.URL)
+	got, _ := getURL(&in.URL)
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("executeInstuction(%+v) = %s, want %s", in, got, want)
 	}

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"cloud.google.com/go/storage"
@@ -22,27 +21,20 @@ type PubSubMessage struct {
 }
 
 // decodeInstruction from JSON-encoded byte array
-func decodeInstruction(m []byte) instruction {
+func decodeInstruction(m []byte) (instruction, error) {
 	var i instruction
 	err := json.Unmarshal(m, &i)
-	if err != nil {
-		log.Fatalf("Unmarshal failed: %v", err)
-	}
-	return i
+	return i, err
 }
 
 // getURL returns contents at URL
-func getURL(url *string) []byte {
+func getURL(url *string) ([]byte, error) {
 	resp, err := http.Get(*url)
 	if err != nil {
-		log.Fatalf("Get request failed: %v", err)
+		return nil, fmt.Errorf("getting %s: %v", *url, err)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("Read response body failed: %v", err)
-	}
-	return body
+	return ioutil.ReadAll(resp.Body)
 }
 
 func getHash(b *[]byte) []byte {
@@ -55,7 +47,7 @@ func getHash(b *[]byte) []byte {
 func upload(ctx context.Context, client *storage.Client, b *[]byte, object string, bucket string) (*storage.ObjectHandle, error) {
 	bh := *client.Bucket(bucket)
 	if _, err := bh.Attrs(ctx); err != nil {
-		return nil, err // bucket doesn't exist
+		return nil, fmt.Errorf("getting bucket %s metadata: %v", bucket, err)
 	}
 
 	obj := bh.Object(object)
@@ -71,7 +63,10 @@ func upload(ctx context.Context, client *storage.Client, b *[]byte, object strin
 }
 
 func execute(ctx context.Context, i instruction) (*storage.ObjectHandle, error) {
-	body := getURL(&i.URL)
+	body, err := getURL(&i.URL)
+	if err != nil {
+		return nil, err
+	}
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return nil, err
@@ -82,7 +77,10 @@ func execute(ctx context.Context, i instruction) (*storage.ObjectHandle, error) 
 
 // ConsumePubSub decodes and execute instructions
 func ConsumePubSub(ctx context.Context, m PubSubMessage) error {
-	i := decodeInstruction(m.Data)
-	_, err := execute(ctx, i)
+	i, err := decodeInstruction(m.Data)
+	if err != nil {
+		return err
+	}
+	_, err = execute(ctx, i)
 	return err
 }
