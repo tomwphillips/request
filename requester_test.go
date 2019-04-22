@@ -36,10 +36,10 @@ func TestGetURL(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s", want)
 	}))
-	in := instruction{URL: ts.URL}
 	defer ts.Close()
 
-	got, _ := getURL(&in.URL)
+	in := ts.URL
+	got, _ := getURL(in)
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("executeInstuction(%+v) = %s, want %s", in, got, want)
 	}

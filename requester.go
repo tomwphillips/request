@@ -28,10 +28,10 @@ func decodeInstruction(m []byte) (instruction, error) {
 }
 
 // getURL returns contents at URL
-func getURL(url *string) ([]byte, error) {
-	resp, err := http.Get(*url)
+func getURL(url string) ([]byte, error) {
+	resp, err := http.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("getting %s: %v", *url, err)
+		return nil, fmt.Errorf("getting %s: %v", url, err)
 	}
 	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
@@ -63,7 +63,7 @@ func upload(ctx context.Context, client *storage.Client, b *[]byte, object strin
 }
 
 func execute(ctx context.Context, i instruction) (*storage.ObjectHandle, error) {
-	body, err := getURL(&i.URL)
+	body, err := getURL(i.URL)
 	if err != nil {
 		return nil, err
 	}
