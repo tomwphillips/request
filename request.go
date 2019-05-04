@@ -1,4 +1,4 @@
-package requester
+package request
 
 import (
 	"context"
