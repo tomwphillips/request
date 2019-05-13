@@ -14,11 +14,11 @@ import (
 	"cloud.google.com/go/storage"
 )
 
-var bucketName = os.Getenv("REQUESTER_TEST_BUCKET")
+var bucketName = os.Getenv("REQUEST_TEST_BUCKET")
 
 func init() {
 	if bucketName == "" {
-		log.Fatalf("REQUESTER_TEST_BUCKET environment variable not set")
+		log.Fatalf("REQUEST_TEST_BUCKET environment variable not set")
 	}
 }
 

@@ -6,7 +6,7 @@ My first Go project, so it's probably not idiomatic.
 
 ## Tests
 
-Set `REQUESTER_TEST_BUCKET` variable to name of test bucket and run `make test`.
+Set `REQUEST_TEST_BUCKET` variable to name of test bucket and run `make test`.
 
 ## Usage
 
