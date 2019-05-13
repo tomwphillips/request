@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 )
 
@@ -36,7 +37,7 @@ func read(ctx context.Context, bucketName string, objectName string) ([]byte, er
 	return ioutil.ReadAll(r)
 }
 
-// ConsumeRequestOutput consumes a GCS event triggered the request cloud
+// ConsumeRequestOutput consumes a GCS event triggered by the request cloud
 // function writing to a GCS bucket.
 func ConsumeRequestOutput(ctx context.Context, e GCSEvent) error {
 	if e.ResourceState == "not_exists" {
@@ -49,4 +50,44 @@ func ConsumeRequestOutput(ctx context.Context, e GCSEvent) error {
 	}
 	log.Printf("%v metadata updated", e.Name)
 	return nil
+}
+
+// InitializeDataset returns handle to dataset. Creates dataset if it doesn't exist.
+func InitializeDataset(ctx context.Context, client *bigquery.Client, id string) (*bigquery.Dataset, error) {
+	ds := client.Dataset(id)
+	if _, err := ds.Metadata(ctx); err != nil {
+		if err := ds.Create(ctx, &bigquery.DatasetMetadata{Location: "EU"}); err != nil {
+			return nil, fmt.Errorf("creating dataset %v: %v", id, err)
+		}
+	}
+	return ds, nil
+}
+
+// InitializeTable returns handle to table. Checks record matches table schema.
+// Creates table if it doesn't exist.
+func InitializeTable(ctx context.Context, ds *bigquery.Dataset, table string, record interface{}) (*bigquery.Table, error) {
+	t := ds.Table(table)
+	if _, err := t.Metadata(ctx); err == nil {
+		// TODO: table already exists, check schema matches otherwise return error
+		return t, nil
+	}
+	schema, err := bigquery.InferSchema(record)
+	if err != nil {
+		return nil, fmt.Errorf("infering schema from %+v: %v", record, err)
+	}
+
+	if err := t.Create(ctx,
+		&bigquery.TableMetadata{
+			Name:   table,
+			Schema: schema,
+		}); err != nil {
+		return nil, fmt.Errorf("creating table %v: %v", table, err)
+	}
+	return ds.Table(table), nil
+}
+
+// StreamRecords to BigQuery.
+func StreamRecords(ctx context.Context, t *bigquery.Table, records interface{}) error {
+	ins := t.Inserter()
+	return ins.Put(ctx, records)
 }
