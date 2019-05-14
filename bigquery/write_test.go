@@ -85,6 +85,14 @@ func TestStreamRecords(t *testing.T) {
 		t.Errorf("StreamRecord != nil, got %v", err)
 	}
 
+	// don't do a count on table because streaming inserts go into a buffer, not the table
+	md, _ := th.Metadata(ctx)
+	got := int(md.StreamingBuffer.EstimatedRows)
+	if got != len(records) {
+		t.Errorf("streaming buffer estimate = %v, not %v", got, len(records))
+	}
+
+	// TODO: defer this
 	if err := client.Dataset(bqDataset).DeleteWithContents(ctx); err != nil {
 		t.Errorf("Deleting test dataset: %v", err)
 	}
