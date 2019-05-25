@@ -37,19 +37,18 @@ func read(ctx context.Context, bucketName string, objectName string) ([]byte, er
 	return ioutil.ReadAll(r)
 }
 
-// ConsumeRequestOutput consumes a GCS event triggered by the request cloud
-// function writing to a GCS bucket.
-func ConsumeRequestOutput(ctx context.Context, e GCSEvent) error {
+// GCSWriteEvent returns true if event describes creation of a new file.
+func GCSWriteEvent(ctx context.Context, e GCSEvent) bool {
 	if e.ResourceState == "not_exists" {
 		log.Printf("%v deleted", e.Name)
-		return nil
+		return false
 	}
 	if e.Metageneration == fileCreated {
 		log.Printf("%v created", e.Name)
-		return nil
+		return true
 	}
 	log.Printf("%v metadata updated", e.Name)
-	return nil
+	return false
 }
 
 // InitializeDataset returns handle to dataset. Creates dataset if it doesn't exist.

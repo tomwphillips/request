@@ -25,30 +25,38 @@ func captureOutput(f func()) string {
 	return buf.String()
 }
 
-func TestConsumeRequestOutput(t *testing.T) {
+func TestGCSWriteEvent(t *testing.T) {
 	ctx := context.Background()
 	var tests = []struct {
 		e    GCSEvent
-		want string
+		log  string
+		want bool
 	}{
 		{
 			GCSEvent{"", "filename", "", "not_exists"},
 			"filename deleted\n",
+			false,
 		},
 		{
 			GCSEvent{"", "filename", fileCreated, ""},
 			"filename created\n",
+			true,
 		},
 		{
 			GCSEvent{"", "filename", "", ""},
 			"filename metadata updated\n",
+			false,
 		},
 	}
 
 	for _, test := range tests {
-		got := captureOutput(func() { ConsumeRequestOutput(ctx, test.e) })
-		if test.want != got {
-			t.Errorf("ConsumeRequestOutput(ctx, %v) = %+v, want %+v", test.e, got, test.want)
+		var got bool
+		gotLog := captureOutput(func() { got = GCSWriteEvent(ctx, test.e) })
+		if test.log != gotLog {
+			t.Errorf("GCSWriteEvent(ctx, %v) logged %+v, want %+v", test.e, gotLog, test.log)
+		}
+		if got != test.want {
+			t.Errorf("GCSWriteEvent(ctx, %v) = %+v, want %+v", test.e, got, test.want)
 		}
 	}
 }
