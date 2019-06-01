@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"context"
 	"log"
+	"math"
 	"os"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/google/uuid"
 )
 
 var projectID = os.Getenv("REQUEST_GCP_TEST_PROJECT")
@@ -62,46 +65,65 @@ func TestGCSWriteEvent(t *testing.T) {
 }
 
 func TestStreamRecords(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping StreamRecords test in short mode")
+	}
+
 	type Pet struct {
+		ID     string  // needed because BiqQuery de-duplicates streaming inserts
 		Name   string
 		Animal string
 		Age    int
 	}
+
 	records := []Pet{
-		{"Ronald", "Cat", 8},
-		{"Bessie", "Dog", 2},
+		{uuid.New().String(), "Ronald", "Cat", 8},
+		{uuid.New().String(), "Bessie", "Dog", 2},
 	}
 
 	ctx := context.Background()
 	client, err := bigquery.NewClient(ctx, projectID)
+	defer client.Dataset(bqDataset).DeleteWithContents(ctx)
 	if err != nil {
-		t.Errorf("creating client for %v: %v", projectID, err)
+		t.Fatalf("creating client for %v: %v", projectID, err)
 	}
 
 	ds, err := InitializeDataset(ctx, client, bqDataset)
 	if err != nil {
-		t.Errorf("initializing dataset: %v", err)
+		t.Fatalf("initializing dataset: %v", err)
 	}
 
 	th, err := InitializeTable(ctx, ds, bqTable, Pet{})
 	if err != nil {
-		t.Errorf("creating table: %v", err)
+		t.Fatalf("creating table: %v", err)
 	}
 
 	err = StreamRecords(ctx, th, records)
 	if err != nil {
-		t.Errorf("StreamRecord != nil, got %v", err)
+		t.Fatalf("StreamRecord != nil, got %v", err)
 	}
 
-	// don't do a count on table because streaming inserts go into a buffer, not the table
-	md, _ := th.Metadata(ctx)
-	got := int(md.StreamingBuffer.EstimatedRows)
-	if got != len(records) {
-		t.Errorf("streaming buffer estimate = %v, not %v", got, len(records))
-	}
+	// Streaming inserts go into a buffer first, not the table directly, but take a while to appear
+	var md *bigquery.TableMetadata
+	retries := 5
+	for i := 1; i <= retries; i++ {
+		time.Sleep(time.Second * time.Duration(math.Pow(2, float64(i))))
 
-	// TODO: defer this
-	if err := client.Dataset(bqDataset).DeleteWithContents(ctx); err != nil {
-		t.Errorf("Deleting test dataset: %v", err)
+		if md, err = th.Metadata(ctx); err != nil {
+			t.Fatalf("metadata error: %v", err)
+		}
+
+		if i <= retries && md.StreamingBuffer == nil {
+			continue  // no buffer yet, retry
+		} else if md.StreamingBuffer == nil {
+			t.Fatalf("no streaming buffer")
+		}
+
+		got := int(md.StreamingBuffer.EstimatedRows)
+		if i <= retries && got != len(records) {
+			continue  // not enough records yet, retry
+		} else if got != len(records) {
+			t.Fatalf("Streaming buffer = %v, want %v", got, len(records))
+		}
 	}
 }
