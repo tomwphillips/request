@@ -21,12 +21,9 @@ type GCSEvent struct {
 const fileCreated string = "1"
 
 // Read file from bucket
-func read(ctx context.Context, bucketName string, objectName string) ([]byte, error) {
+func Read(ctx context.Context, bucketName string, objectName string) ([]byte, error) {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
-		return nil, err
-	}
-	if err := client.Close(); err != nil {
 		return nil, err
 	}
 	r, err := client.Bucket(bucketName).Object(objectName).NewReader(ctx)
@@ -34,6 +31,7 @@ func read(ctx context.Context, bucketName string, objectName string) ([]byte, er
 		return nil, fmt.Errorf("reading %s/%s: %v", bucketName, objectName, err)
 	}
 	defer r.Close()
+	defer client.Close()
 	return ioutil.ReadAll(r)
 }
 
