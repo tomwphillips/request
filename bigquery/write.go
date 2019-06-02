@@ -49,6 +49,11 @@ func GCSWriteEvent(ctx context.Context, e GCSEvent) bool {
 	return false
 }
 
+// InitializeClient returns BigQuery client for a project
+func InitializeClient(ctx context.Context, projectID string) (*bigquery.Client, error) {
+	return bigquery.NewClient(ctx, projectID)
+}
+
 // InitializeDataset returns handle to dataset. Creates dataset if it doesn't exist.
 func InitializeDataset(ctx context.Context, client *bigquery.Client, id string) (*bigquery.Dataset, error) {
 	ds := client.Dataset(id)
@@ -87,4 +92,20 @@ func InitializeTable(ctx context.Context, ds *bigquery.Dataset, table string, re
 func StreamRecords(ctx context.Context, t *bigquery.Table, records interface{}) error {
 	ins := t.Inserter()
 	return ins.Put(ctx, records)
+}
+
+// SwitchBucket moves a file from one bucket to another.
+func SwitchBucket(ctx context.Context, srcBucket string, dstBucket string, obj string) error {
+	client, err := storage.NewClient(ctx)
+	defer client.Close()
+	if err != nil {
+		return err
+	}
+	src := client.Bucket(srcBucket).Object(obj)
+	dst := client.Bucket(dstBucket).Object(obj)
+	_, err = dst.CopierFrom(src).Run(ctx)
+	if err != nil {
+		return err
+	}
+	return src.Delete(ctx)
 }
