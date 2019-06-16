@@ -1,15 +1,28 @@
-# Requester
+# Request
 
-A GCP Cloud Function triggered via PubSub that makes a HTTP GET request to a URL and saves the response body to a GCP Storage Bucket. Intended for getting data from APIs at regular intervals.
+`request` is a package containing functions get the contents of a URL and write it to [Google Cloud Storage](https://cloud.google.com/storage/) (GCS).
 
-My first Go project, so it's probably not idiomatic.
+The `request/bigquery` package contains functions to read the files written to GCS and stream them to [BigQuery](https://cloud.google.com/bigquery/).
+
+Both of these are intended for use as serverless functions, e.g. Google [Cloud Functions](https://cloud.google.com/functions/). The purpose is to regularly collect data from a URL and store it for further analysis.
+
+This is my first Go project, so it might not be entirely idiomatic.
 
 ## Tests
 
-Set `REQUEST_TEST_BUCKET` variable to name of test bucket and run `make test`.
+Set the following environment variables (with appropriate values):
 
-## Usage
+```
+REQUEST_TEST_BUCKET="name-of-test-bucket"
+REQUEST_GCP_TEST_PROJECT="name-of-project"
+REQUEST_BQ_TEST_DATASET="request_test"
+REQUEST_BQ_TEST_TABLE="test"
+```
 
-1. Authorize your machine with `gcloud auth login`.
-2. Run `make deploy`.
-3. Publish a message to `requester-instruction` containing a JSON object with the keys `url` and `bucket`.
+Then:
+
+```
+go test ./...
+```
+
+Some of them are slow integration tests. You can skip them with the `-short` flag.
