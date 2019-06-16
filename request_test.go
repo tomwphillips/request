@@ -24,8 +24,8 @@ func init() {
 
 func TestDecodeInstruction(t *testing.T) {
 	in := []byte(`{"url": "http://google.com", "bucket": "bucket-name"}`)
-	want := instruction{URL: "http://google.com", Bucket: "bucket-name"}
-	got, _ := decodeInstruction(in)
+	want := Instruction{URL: "http://google.com", Bucket: "bucket-name"}
+	got, _ := DecodeInstruction(in)
 	if got != want {
 		t.Errorf("decodeInstruction(%s) = %+v, want %+v", in, got, want)
 	}
@@ -85,8 +85,8 @@ func TestExecute(t *testing.T) {
 	defer ts.Close()
 
 	ctx := context.Background()
-	in := instruction{URL: ts.URL, Bucket: bucketName}
-	obj, err := execute(ctx, in)
+	in := Instruction{URL: ts.URL, Bucket: bucketName}
+	obj, err := Execute(ctx, in)
 	if err != nil {
 		t.Fatalf("Execute failed: %v", err)
 	}

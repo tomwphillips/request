@@ -11,23 +11,20 @@ import (
 	"cloud.google.com/go/storage"
 )
 
-type instruction struct {
+// Instruction to get URL and destination bucket
+type Instruction struct {
 	URL    string
 	Bucket string
 }
 
-type PubSubMessage struct {
-	Data []byte `json:"data"`
-}
-
-// decodeInstruction from JSON-encoded byte array
-func decodeInstruction(m []byte) (instruction, error) {
-	var i instruction
+// DecodeInstruction from JSON-encoded byte array
+func DecodeInstruction(m []byte) (Instruction, error) {
+	var i Instruction
 	err := json.Unmarshal(m, &i)
 	return i, err
 }
 
-// getURL returns contents at URL
+// GetURL returns contents at URL
 func getURL(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -62,7 +59,8 @@ func upload(ctx context.Context, client *storage.Client, b *[]byte, object strin
 	return obj, nil
 }
 
-func execute(ctx context.Context, i instruction) (*storage.ObjectHandle, error) {
+// Execute instruction to get contents of a URL and upload to GCS
+func Execute(ctx context.Context, i Instruction) (*storage.ObjectHandle, error) {
 	body, err := getURL(i.URL)
 	if err != nil {
 		return nil, err
