@@ -4,7 +4,7 @@
 
 The `request/bigquery` package contains functions to read the files written to GCS and stream them to [BigQuery](https://cloud.google.com/bigquery/).
 
-Both of these are intended for use as serverless functions, e.g. Google [Cloud Functions](https://cloud.google.com/functions/). The purpose is to regularly collect data from a URL and store it for further analysis.
+Both of these are intended for use as serverless functions, e.g. Google [Cloud Functions](https://cloud.google.com/functions/). The purpose is to regularly collect data from a URL and store it for further analysis. See [`tfl`](http://github.com/tomwphillips/tfl) for an example.
 
 This is my first Go project, so it might not be entirely idiomatic.
 
